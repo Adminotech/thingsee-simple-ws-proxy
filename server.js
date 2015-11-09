@@ -6,8 +6,11 @@ var clientList = {};
 function startWebSocket(port) {
   var wsserver = ws.createServer(function(conn) {
     conn.on("text", function(str) {
-      console.log('Client registered ' + str);
-      clientList[str] = conn;
+      if (str != "ping")
+      {
+        console.log('Client registered ' + str);
+        clientList[str] = conn;
+      }
     })
     conn.on("close", function(code, reason) {
       for (var property in clientList) {
@@ -44,7 +47,10 @@ function startAPI(settings) {
       var dId = request.headers.deviceauthuuid ? request.headers.deviceauthuuid : 'unknown';
       console.log('Received POST data: device ' + dId);
       if (clientList.hasOwnProperty(dId)) {
-        clientList[dId].sendText( JSON.stringify(request.payload) );
+        var response = {};
+        response.deviceId = dId;
+        response.data = request.payload;
+        clientList[dId].sendText( JSON.stringify(response) );
       }
       reply();
     }
@@ -56,7 +62,9 @@ function startAPI(settings) {
 
 }
 
-module.exports.listen = function(settings) {
-  startWebSocket( settings.wsPort );
-  startAPI( settings );
-};
+startWebSocket( "8101" );
+startAPI( {
+  apiPath : "/api",
+  httpPort : "8100",
+  httpHost : "0.0.0.0"
+} );
