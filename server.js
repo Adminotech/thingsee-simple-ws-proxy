@@ -20,7 +20,7 @@ function startWebSocket(port) {
       }
       console.log("Connection closed")
     })
-  }).listen(port, console.log('WS server running on port: ' + port));
+  }).listen(port, "127.0.0.1", function() { console.log('WS server running on port: ' + port) });
 }
 
 function startAPI(settings) {
