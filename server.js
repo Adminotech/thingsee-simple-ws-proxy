@@ -1,7 +1,7 @@
 var ws = require("nodejs-websocket")
 var Hapi = require('hapi');
 var apiServer = new Hapi.Server();
-var clientList = {};
+var clientList = [];
 
 function startWebSocket(port) {
   var wsserver = ws.createServer(function(conn) {
@@ -9,17 +9,27 @@ function startWebSocket(port) {
       if (str != "ping")
       {
         console.log('Client registered ' + str);
-        clientList[str] = conn;
+        clientList.push(conn);
       }
-    })
+    });
     conn.on("close", function(code, reason) {
-      for (var property in clientList) {
-        if (clientList.hasOwnProperty(property)) {
-          delete clientList[property];
+      var connId = -1;
+      for (var i = 0; i < clientList.length; ++i)
+      {
+        if (clientList[i] == conn)
+        {
+          console.log("Disconnected", i);
+          connId = i;
+          break;
         }
       }
-      console.log("Connection closed")
-    })
+      if (connId != -1)
+        clientList.splice(connId, 1);
+        console.log("Connection closed")
+    });
+    conn.on("error", function(err) {
+      console.log("An error occured in WebSocket server:", err);
+    });
   }).listen(port, "127.0.0.1", function() { console.log('WS server running on port: ' + port) });
 }
 
@@ -42,15 +52,17 @@ function startAPI(settings) {
     method: 'POST',
     path: settings.apiPath,
     handler: function(request, reply) {
-
-
       var dId = request.headers.deviceauthuuid ? request.headers.deviceauthuuid : 'unknown';
       console.log('Received POST data: device ' + dId);
-      if (clientList.hasOwnProperty(dId)) {
+      if (clientList.length > 0) {
         var response = {};
         response.deviceId = dId;
         response.data = request.payload;
-        clientList[dId].sendText( JSON.stringify(response) );
+        for (var i = 0; i < clientList.length; ++i)
+        {
+          console.log("Sending to ", i);
+          clientList[i].sendText(JSON.stringify(response));
+        }
       }
       reply();
     }
